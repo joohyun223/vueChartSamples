@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>DoughnutChart</title>
+  <script src="https://unpkg.com/vue"></script>
+</head>
+<body>
+  <h1> DoughnutChart </h1>
+  <div id="progressChart">
+    <canvas id="progress" width="317" height="317"></canvas>
+    <canvas id="point" width="317" height="317"></canvas>
+    <div class="js-controls" v-if="this.control">
+      <label>
+        Value
+        <input @keyup="setAngle" type="number" min="0" max="100" name="" placeholder="Degrees" id="pie-value" value="0" />
+      </label>
+    </div>
+  </div>
+  <!-- 적용예제 -->
+  <!-- <doughnut-chart fillColor="rgb(0,179,227)" v-bind:percentage="48.2" v-bind:enterShow="true"></doughnut-chart> -->
+  <script>
+    var app = new Vue({
+      el: '#progressChart',
+      props:{
+        fillColor: {
+          type: String,
+          default: "rgb(0,179,227)"
+        },
+        percentage: {
+            type: Number,
+            default: 48.2
+        },
+        // 테스트용 퍼센티지 설정 input 노출 여부
+        control: {
+            type: Boolean,
+            default: true
+        },
+      },
+      data() {
+          return{
+              showControl: JSON.parse(this.control),
+          }
+      },
+      methods: {
+          draw: function(){
+              this.requestFrameId = requestAnimationFrame(this.draw);
+              this.progressCircle.ctx.clearRect( 0, 0, this.progressCanvas.width, this.progressCanvas.height);    
+              this.pointCircle.ctx.clearRect(0,0,this.pointCanvas.width,this.pointCanvas.height);
+              this.progressCircle._draw();
+              this.pointCircle._draw();
+          },
+          // 퍼센티지 적용 핸들러. 단위:0~100
+          updateHandler: function(toAngle){
+              clearTimeout(this.timer);
+              let _toAngle = (toAngle>=100)?100:toAngle;
+              this.timer = setTimeout(()=>{
+                  this.progressCircle.setEndAngle( _toAngle * 3.6 );
+                  this.pointCircle.setPointTo( _toAngle * 3.6 );
+                  this.draw();
+              }, 250);
+          },
+          // 테스트용 input 이벤트 리스너
+          setAngle: function(e){
+              this.updateHandler(e.target.value);
+          }
+      },
+      mounted(){
+          this.progressCanvas = this.$el.querySelector('#progress');
+          this.pointCanvas = this.$el.querySelector('#point');
+
+          function Circle( options ){
+              this.options = options;
+              this._this = options._this;
+              this.ctx = options.ctx;
+              this.radius = options.radius;
+              this.direction = options.direction || 'clockwise';
+              this.x = options.x;
+              this.y = options.y;
+              this.startAngle = options.startAngle;
+              this.endAngle = options.endAngle;
+              this.fillStyle = options.fillStyle;
+              this.lineWidth = options.lineWidth;
+              this.strokeStyle = options.strokeStyle;
+              this.lineCap = options.lineCap;
+              this.shadowColor = options.shadowColor;
+              this.shadowOffsetX = options.shadowOffsetX;
+              this.shadowOffsetY = options.shadowOffsetY;
+              this.shadowBlur = options.shadowBlur
+              this.animate = options.animate || false;
+              this.counter = 0;
+              this.startAngle = this._degreesToRadians( this.startAngle );
+          }
+          Circle.prototype._draw = function(){
+              var endAngle;
+              if( this.animate ){
+                  if( ( this.animate.counter + 1 * this.animate.speed ) < this.endAngle ){
+                      this.animate.counter += 1 * this.animate.speed;
+                  }
+                  else if( this.endAngle < ( this.animate.counter - 1 * this.animate.speed ) ) {
+                      this.animate.counter -= 1 * this.animate.speed;
+                  }
+                  else{
+                      this.animate.counter = this.endAngle;        
+                      cancelAnimationFrame(this._this.requestFrameId);
+                  }
+                  endAngle = this.startAngle - this._degreesToRadians( -this.animate.counter );
+              }
+              else{
+                  endAngle = this._degreesToRadians( this.endAngle );
+              }
+              this.ctx.strokeStyle = this.strokeStyle;
+              this.ctx.lineCap = this.lineCap;
+              this.ctx.shadowColor = this.shadowColor;
+              this.ctx.shadowOffsetX = this.shadowOffsetX;
+              this.ctx.shadowOffsetY = this.shadowOffsetY;
+              this.ctx.shadowBlur = this.shadowBlur;
+              this.ctx.beginPath();     
+              this.ctx.arc( this.x, this.y, this.radius, this.startAngle, endAngle);
+              this.ctx.lineWidth = this.lineWidth;
+              this.ctx.fillStyle = this.fillStyle;
+              this.ctx.stroke();
+              this.ctx.fill();
+          };
+          Circle.prototype._degreesToRadians = function( degrees ){
+              return degrees * Math.PI / 180;
+          };
+          Circle.prototype.toggleDirection = function(){
+              this.direction = ( this.direction === 'clockwise' )? 'anticlockwise' : 'clockwise';
+          };
+          Circle.prototype.getStartAngle = function(){
+              return this.startAngle;
+          };
+          Circle.prototype.getEndAngle = function(){
+              return this.endAngle;
+          };
+          Circle.prototype.setStartAngle = function( angle ){
+              this.startAngle = parseInt( angle || this.startAngle, 10 );
+          };
+          Circle.prototype.setEndAngle = function( angle ){
+              this.endAngle = parseInt( angle, 10 );
+          };
+
+          function PointCircle(options){
+              this.options = options;
+              this.ctx = options.ctx;
+              this.radius = options.radius;
+              this.direction = options.direction || 'clockwise';
+              this.x = options.x;
+              this.y = options.y;
+              this.centerX = options.centerX;
+              this.centerY = options.centerY;
+              this.startAngle = options.startAngle;
+              this.endAngle = options.endAngle;
+              this.fillStyle = options.fillStyle;
+              this.lineWidth = options.lineWidth;
+              this.strokeStyle = options.strokeStyle;
+              this.animate = options.animate || false;
+              this.counter = 0;
+              this.startAngle = this._degreesToRadians( this.startAngle );
+              this.pointTo = options.pointTo;
+          }
+          PointCircle.prototype._degreesToRadians = function( degrees ){
+              return degrees * Math.PI / 180;
+          };
+          PointCircle.prototype._draw = function(){
+              var pointTo;
+              if( this.animate ){
+                  if( ( this.animate.counter + 1 * this.animate.speed ) < this.pointTo ){
+                      this.animate.counter += 1 * this.animate.speed;
+                  }
+                  else if( this.pointTo < ( this.animate.counter - 1 * this.animate.speed ) ) {
+                      this.animate.counter -= 1 * this.animate.speed;
+                  }
+                  else{
+                      this.animate.counter = this.pointTo;        
+                  }
+                  pointTo = this.startAngle - this._degreesToRadians( -this.animate.counter );
+              }
+              else{
+                  pointTo = this._degreesToRadians( this.pointTo );
+              }
+              this.ctx.save();
+              this.ctx.translate(this.centerX,this.centerY);
+              this.ctx.rotate(pointTo);
+              this.ctx.translate(0,this.centerX-8);
+
+              //draw
+              this.ctx.beginPath();
+              this.ctx.arc( this.x, this.y, this.radius, this.startAngle, this.endAngle);
+              this.ctx.fillStyle = this.fillStyle;
+              this.ctx.fill();
+
+              this.ctx.beginPath();
+              this.ctx.arc( this.x, this.y, this.radius/1.5, this.startAngle, this.endAngle);
+              this.ctx.strokeStyle = this.strokeStyle;
+              this.ctx.lineWidth = this.lineWidth;
+              this.ctx.stroke();
+
+              this.ctx.restore();
+          }
+          PointCircle.prototype.setPointTo = function( angle ){
+              this.pointTo = parseInt( angle, 10 );
+          };
+
+          //진행도 원
+          this.progressCircle = new Circle({
+              _this: this,
+              ctx: this.$el.querySelector('#progress').getContext('2d'),
+              radius: this.progressCanvas.width / 2 - 20, // 캔버스가로/2 - (lineWidth/2 + shadowBlur) 
+              x: this.progressCanvas.width / 2,
+              y: this.progressCanvas.height / 2,
+              lineCap: 'round',
+              lineWidth: 20,
+              shadowOffsetX: 5,
+              shadowOffsetY: 5,
+              shadowBlur: 10,
+              shadowColor: 'rgba(0,0,0,0.2)',
+              fillStyle: 'rgba(0,0,0,0)',
+              strokeStyle: this.fillColor,
+              startAngle : 90,
+              endAngle : 0,
+              animate: {
+                  active: false,
+                  speed: 5
+              }
+          });
+
+          //포인트 점
+          this.pointCircle = new PointCircle({
+              ctx: this.$el.querySelector('#point').getContext('2d'),
+              radius: 10, // progressCircle.lineWidth/2
+              x: 0,
+              y: -12,
+              centerX: 158.5,
+              centerY: 158.5,
+              lineWidth: 3,
+              fillStyle: this.fillColor,
+              strokeStyle: 'white',
+              startAngle : 0,
+              endAngle : 360,
+              pointTo: 0, 
+              animate: {
+                  speed: 5
+              }
+          })
+
+          this.draw();
+          if(!this.control){
+              this.updateHandler(this.percentage);
+          }
+      }
+    })
+  </script>
+
+<style lang="scss" scoped>
+  h1{
+    text-align: center;
+  }
+  canvas{
+      display: block;
+      position: absolute;
+      left: 50%;
+      top: 30%;
+      transform: translate(-50%,-50%);
+      z-index: 1;
+  }
+  .js-controls{
+      display: block;
+      position: absolute;
+      text-align: center;
+      width: 100%;
+  }
+</style>
+  
+</body>
+</html>

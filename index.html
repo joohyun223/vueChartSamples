@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Vue Chart Sample</title>
+  <script src="https://unpkg.com/vue"></script>
+</head>
+<body>
+  <div id="app">
+    <h1>{{ greeting }}</h1>
+    <ul>
+      <li>
+        <a :href="doughnut" target="_blank">
+          도넛차트
+        </a>
+      </li>
+      <li>
+        <a :href="line" target="_blank">
+          라인차트
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <script>
+    var app = new Vue({
+      el: '#app',
+      data: {
+        greeting: 'Vue Chart Sample',
+        doughnut: './doughnutChart.html',
+        line: './TrendLineGraph.html',
+      },
+      methods: {
+      }
+    })
+  </script>
+</body>
+</html>

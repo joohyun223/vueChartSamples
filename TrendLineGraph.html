@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>TrendLineGraph</title>
+  <script src="https://unpkg.com/vue"></script>
+</head>
+<body>
+  <h1> TrendLineGraph </h1>
+    <div id="app">
+        <div id="yLabels"></div>
+        <canvas id="trendChart" width="350" height="204"></canvas>
+        <div id="xLabels"></div>
+    </div>
+
+    <!-- 적용예제 -->
+    <!-- <trend-line-graph lineColor="#818dff" lineData="28948, 53885, 42331, 1232, 44061, 77193" boundaryData="60281, 26110, 35290, 937, 12869, 22896" yAxesMin="0" yAxesMax="80000" />  -->
+  <script>
+    var app = new Vue({
+      el: '#app',
+      props: {
+        lineColor: {
+          type: String,
+          default: "#818dff"
+        },
+        lineData: {
+          type: String,
+          default: "28948, 53885, 42331, 1232, 44061, 77193, 35268"
+        },
+        boundaryData: {
+          type: String,
+          default: "60281, 26110, 35290, 937, 12869, 22896, 45835"
+        },
+        yAxesMin: {
+          type: String,
+          default: "0"
+        },
+        yAxesMax: {
+          type: String,
+          default: "80000"
+        }
+      },
+      data(){
+          return{
+              trendType: 'white',
+              option:{
+                  lineWidth: 12,
+                  gridLineWidth: 1,
+                  lineCap: 'round',
+                  lineJoin: 'bevel',
+                  shadowColor: 'rgba(0,0,0,0.2)',
+                  shadowOffsetX: 0,
+                  shadowOffsetY: 7,
+                  shadowBlur: 6,
+                  strokeStyle: 'rgb(129,140,225)',
+                  circleStrokeStyle: 'white',
+                  circleLineWidth: 6,
+                  circleRadius: 1,
+                  gradientStart: 'rgba(100,100,100,0.7)',
+                  gradientEnd: 'rgba(100,100,100,0.3)'
+              },
+              scales:{
+                  xAxes: {
+                      labels: ['월', '화', '수', '목', '금', '토', '일'],
+                  },
+                  yAxes: {
+                      //props.yAxesMin, props.yAxesMax 값 존재할 경우 해당 prop의 최소/최대값에서 4를 나눈 값의 배수로 재설정. 
+                      labels: ['80000', '60000', '40000', '20000', '0'],
+                  }
+              }
+          }
+      },
+      mounted(){
+          this.init();
+      },
+      methods:{
+          init: function(){
+              this.polyfill();
+              let yAxesRange = (1*this.yAxesMax-1*this.yAxesMin)/4;
+              this.scales.yAxes.labels = [1*this.yAxesMax, 1*this.yAxesMin+yAxesRange*3, 1*this.yAxesMin+yAxesRange*2, 1*this.yAxesMin+yAxesRange, 1*this.yAxesMin];
+              this.trendType = "white";
+              // this.trendType = this.$el.closest('.chart-trend').classList.contains("outbound") ? "black": "white";
+              this.chart = this.$el.querySelector('#trendChart');
+              this.ctx = this.chart.getContext('2d');
+              this.percentage = 1*(1+"0".repeat(this.yAxesMax.length-1));
+              this.setLineGraph();
+          },
+          setLineGraph: function(){  
+              this.setLabels(this.scales.xAxes.labels, 'xLabels');
+              this.setLabels(this.scales.yAxes.labels, 'yLabels');
+              this.gridHorizontal(this.chart.height);
+              this.drawBoundary(this.boundaryData.replace(/ /gi, "").split(","));
+              this.drawLine(this.lineData.replace(/ /gi, "").split(","));
+              this.gridVertical();
+          },
+          gridHorizontal: function(ch){
+              let h =  [ch-2, ch-ch/4, ch-2*ch/4, ch-3*ch/4, ch-4*ch/4+2];
+              let outStrokeStyle = (this.trendType === "white")? 'rgb(160, 160, 160)' : 'rgb(200, 200, 200)';
+              let inStrokeStyle = (this.trendType === "white")? 'rgb(200, 200, 200)' : 'rgb(160, 160, 160)';
+
+              for(var i =0;i<h.length;i++){
+                  this.ctx.beginPath();
+                  this.ctx.lineWidth = this.option.gridLineWidth;
+                  this.ctx.strokeStyle = inStrokeStyle;
+                  if(i==0){
+                      this.ctx.strokeStyle = outStrokeStyle;
+                  }
+                  this.ctx.moveTo(0,h[i]);
+                  if(i == h.length-1){
+                      this.ctx.moveTo(0,h[i]+3);
+                  }
+                  this.ctx.lineTo(this.chart.width, h[i]);
+                  this.ctx.stroke();
+              }
+          },
+          gridVertical: function(){
+              this.ctx.beginPath();
+              this.ctx.strokeStyle = (this.trendType === "white")? 'rgb(160, 160, 160)' : 'rgb(200, 200, 200)';
+              this.ctx.lineWidth = this.option.gridLineWidth;
+              this.ctx.moveTo(1, 0);
+              this.ctx.lineTo(1, this.chart.height);
+              this.ctx.stroke();
+
+              // multiline
+              // for(var i =0;i<7 ;i++){
+              //     this.ctx.beginPath();
+              //     this.ctx.lineWidth = 1;
+              //     this.ctx.strokeStyle = 'rgb(200, 200, 200)';
+              //     this.ctx.moveTo(i* this.chart.width/6, 0);
+              //     this.ctx.lineTo(i*this.chart.width/6, 3000);
+              //     this.ctx.stroke();
+              // }
+
+          },
+          setLabels: function(labels, id){
+              for(let i = 0; i<labels.length; i++){
+                  let span = document.createElement('span');
+                  let text_value = document.createTextNode(labels[i])
+                  span.appendChild(text_value);
+                  this.$el.querySelector('#'+id).appendChild(span);
+              }
+          },
+          drawLine: function(value){
+              let path = new Array(7).slice(0, value.length);
+              this.ctx.beginPath();
+              this.ctx.lineWidth = this.option.gridLineWidth;
+              this.ctx.lineCap = this.option.lineCap;
+              this.ctx.lineJoin = this.option.lineJoin;
+
+              for(let i=0; i<value.length; i++){
+                  path[i] = [Math.round(i * this.chart.width/(this.scales.xAxes.labels.length-1)) , this.chart.height-(value[i]-this.yAxesMin)/(this.yAxesMax-this.yAxesMin)*this.chart.height]; 
+                  if(i>=value.length-1){
+                      path[i][0] -= this.scales.xAxes.labels.length-1;
+                      path[i][1] -= this.scales.xAxes.labels.length-1;
+                  }                
+              }
+
+              //test
+              // this.ctx.moveTo(0,path[0])
+              // this.ctx.lineWidth = 1;
+              // this.ctx.strokeStyle="red";
+              // for(let i=0; i<path.length; i++){
+              //     this.ctx.lineTo(path[i][0], path[i][1]);
+              // }
+              // this.ctx.stroke();
+
+              this.ctx.lineWidth = this.option.lineWidth;
+              this.ctx.beginPath();
+              this.ctx.shadowColor = this.option.shadowColor;
+              this.ctx.shadowOffsetX = this.option.shadowOffsetX;
+              this.ctx.shadowOffsetY = this.option.shadowOffsetY;
+              this.ctx.shadowBlur = this.option.shadowBlur;
+              this.ctx.strokeStyle = (this.lineColor)?this.lineColor: this.option.strokeStyle;
+              
+              let pointA, pointB, endPointY;
+              path.forEach((_, i, list)=>{
+                  if(typeof list[i+1] === "undefined"){
+                      this.ctx.lineTo(_[0], _[1]);
+                      return;
+                  }
+                  if(i==0){
+                      this.ctx.moveTo(0, _[1]);
+                      if(_[1]< list[i+1][1]){
+                          this.ctx.lineTo(this.chart.width/(this.scales.xAxes.labels.length*2), _[1] + Math.abs(_[1] - list[i+1][1])/2);
+                      }else{
+                          this.ctx.lineTo(this.chart.width/(this.scales.xAxes.labels.length*2), _[1] - Math.abs(_[1] - list[i+1][1])/2);
+                      }
+                  }else{
+                      // A-B, B-C 의 길이 비교, 큰 변이 있는 쪽이 포인트가 됨.
+                      if(Math.abs(list[i-1][1] - _[1]) > Math.abs(_[1] - list[i+1][1])){
+                          // A-B가 큰 경우 => A, B 비교
+                          pointA = (list[i-1][1] > _[1])? _[1] - Math.abs(_[1] - list[i+1][1])/2 : _[1] + Math.abs(_[1] - list[i+1][1])/2;
+                          pointB = _[1];
+                          endPointY = (_[1] > list[i+1][1])?  _[1] - Math.abs(_[1] - list[i+1][1])/2:  list[i+1][1] - Math.abs(list[i+1][1] - _[1])/2;
+                          // console.log('A' , i,",", list[i-1][1], _[1], endPointY);
+                      }else{
+                          // B-C가 큰 경우 => B, C 비교
+                          pointA = _[1];
+                          pointB = (_[1] > list[i+1][1])? _[1] + Math.abs(_[1] - list[i-1][1])/2 : _[1] - Math.abs(_[1] - list[i-1][1])/2;
+                          endPointY = (_[1] > list[i+1][1])? _[1] - Math.abs(_[1] - list[i+1][1])/2: _[1] + Math.abs(_[1] - list[i+1][1])/2;
+                          // console.log('B' , i,",", list[i-1][1], _[1], endPointY );
+                      }
+                      this.ctx.bezierCurveTo(_[0], Math.round(pointA), _[0], Math.round(pointB), _[0]-(_[0]-list[i+1][0])/2, Math.round(endPointY));
+                      // console.log('curveTo--' ,i,",", _[0], Math.round(pointA), _[0], Math.round(pointB), _[0]-(_[0]-list[i+1][0])/2, Math.round(endPointY) );
+                  }
+              })
+              this.ctx.stroke();
+
+              //circle point
+              this.ctx.beginPath(); 
+              this.ctx.strokeStyle = this.option.circleStrokeStyle;
+              this.ctx.lineWidth = this.option.circleLineWidth;
+              this.ctx.arc(path[path.length-1][0], path[path.length-1][1], this.option.circleRadius, 0, 2 * Math.PI);
+              this.ctx.stroke();
+          },
+          drawBoundary: function(value){
+              let path = new Array(7).slice(0, value.length);
+              this.ctx.beginPath();
+              this.ctx.lineWidth = this.option.gridLineWidth;
+              this.ctx.lineCap = this.option.lineCap;
+              this.ctx.lineJoin = this.option.lineJoin;
+
+              for(let i=0; i<value.length; i++){
+                  path[i] = [Math.round(i * this.chart.width/(this.scales.xAxes.labels.length-1)) , this.chart.height-(value[i]-this.yAxesMin)/(this.yAxesMax-this.yAxesMin)*this.chart.height]; 
+              }
+
+              //test
+              // this.ctx.moveTo(0,path[0])
+              // this.ctx.lineWidth = 1;
+              // this.ctx.strokeStyle="red";
+              // for(let i=0; i<path.length; i++){
+              //     this.ctx.lineTo(path[i][0], path[i][1]);
+              // }
+              // this.ctx.stroke();
+
+              let gradient = this.ctx.createLinearGradient(0, 0, 0, 170);
+              gradient.addColorStop(0, this.option.gradientStart);
+              gradient.addColorStop(1, this.option.gradientEnd);
+              this.ctx.fillStyle = gradient;
+              this.ctx.beginPath();
+
+              let pointA, pointB, endPointY;
+              path.forEach((_, i, list)=>{
+
+                  if(typeof list[i+1] === "undefined"){
+                      this.ctx.lineTo(_[0], _[1]);
+                      this.ctx.lineTo(_[0], this.chart.height);
+                      return;
+                  }
+                  if(i==0){
+                      this.ctx.moveTo(0, this.chart.height);
+                      this.ctx.lineTo(0, _[1]);
+                      if(_[1]< list[i+1][1]){
+                          this.ctx.lineTo(this.chart.width/(this.scales.xAxes.labels.length*2), _[1] + Math.abs(_[1] - list[i+1][1])/2);
+                      }else{
+                          this.ctx.lineTo(this.chart.width/(this.scales.xAxes.labels.length*2), _[1] - Math.abs(_[1] - list[i+1][1])/2);
+                      }
+                  }else{
+                      if(Math.abs(list[i-1][1] - _[1]) > Math.abs(_[1] - list[i+1][1])){
+                          pointA = (list[i-1][1] > _[1])? _[1] - Math.abs(_[1] - list[i+1][1])/2 + 8 : _[1] + Math.abs(_[1] - list[i+1][1])/2 - 8;
+                          pointB = _[1];
+                          endPointY = (_[1] > list[i+1][1])?  _[1] - Math.abs(_[1] - list[i+1][1])/2:  list[i+1][1] - Math.abs(list[i+1][1] - _[1])/2;
+                      }else{
+                          pointA = _[1];
+                          pointB = (_[1] > list[i+1][1])? _[1] + Math.abs(_[1] - list[i-1][1])/2 - 8 : _[1] - Math.abs(_[1] - list[i-1][1])/2 + 8;
+                          endPointY = (_[1] > list[i+1][1])? _[1] - Math.abs(_[1] - list[i+1][1])/2: _[1] + Math.abs(_[1] - list[i+1][1])/2;
+                      }
+                      this.ctx.bezierCurveTo(_[0], Math.round(pointA), _[0], Math.round(pointB), _[0]-(_[0]-list[i+1][0])/2, Math.round(endPointY));
+                  }
+              })
+
+              this.ctx.fill();
+
+          },
+          polyfill: function(){
+              if (!Element.prototype.matches) {
+                  Element.prototype.matches = Element.prototype.msMatchesSelector ||
+                                              Element.prototype.webkitMatchesSelector;
+              }
+
+              if (!Element.prototype.closest) {
+                  Element.prototype.closest = function(s) {
+                      var el = this;
+
+                      do {
+                      if (el.matches(s)) return el;
+                      el = el.parentElement || el.parentNode;
+                      } while (el !== null && el.nodeType === 1);
+                      return null;
+                  };
+              }
+          }
+      }
+    })
+  </script>
+
+  <style>
+      h1{
+        text-align: center;
+      }
+      #app{
+        left: calc(50% - 199px);
+        position: absolute;
+        margin-top: 35px;
+      }
+      #trendChart{
+          margin-left: 48px;   
+      }
+      #xLabels{
+          /* margin-left:44px; */
+      }
+      #xLabels>span{
+          text-align: right;
+          width: 56px;
+          display: inline-block;
+          font-size:14px;
+      }
+      
+      #yLabels{
+          position:absolute;
+          top:0;
+          margin-right: 5px;
+      }
+      #yLabels>span{
+          text-align: right;
+          display:block;
+          font-size:14px;
+          height:48px;
+      }
+
+      .chart-trend.outbound #xLabels>span{
+          color: white;
+      }
+      .chart-trend.outbound #yLabels>span{
+          color: white;
+      }
+
+      .inventory #yLabels{
+          left: 15px;
+      }
+
+  </style>
+</body>
+</html>
